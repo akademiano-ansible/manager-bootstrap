@@ -31,7 +31,7 @@ ansible-playbook ansible-roles-preload.yml
 
 #if not exist param with default roles-install playbook url - use akademiano-full
 
-ROLES_URL=https://gist.githubusercontent.com/mrdatamapper/75fbd48ab24c7e4509cc1ca6122a1d0d/raw/a84c025dd08f739371d1758f2c0994294e161661/akademiano-ansible-roles-all.yml
+ROLES_URL=https://gist.githubusercontent.com/mrdatamapper/75fbd48ab24c7e4509cc1ca6122a1d0d/raw/akademiano-ansible-roles-all.yml
 
 wget -O ansible-roles-install.yml $ROLES_URL
 
