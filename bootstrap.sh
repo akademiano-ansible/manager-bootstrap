@@ -18,9 +18,12 @@ apt-get install ansible wget ca-certificates
 update-ca-certificates
 
 #download bootstrap playbook
-wget -O ansible-bootstrap.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-bootstrap.yml
+wget -O ansible-bootstrap.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-bootstrap-1.yml
+wget -O ansible-bootstrap.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-bootstrap-2.yml
 
-ansible-playbook ansible-bootstrap.yml
+ansible-playbook ansible-bootstrap-1.yml
+
+ansible-playbook ansible-bootstrap-2.yml
 
 wget -O ansible-roles-preload.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-roles-preload.yml
 

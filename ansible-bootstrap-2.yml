@@ -1,0 +1,6 @@
+---
+- name: Run ansible bootstrap role
+  hosts: 127.0.0.1
+  connection: local
+  roles:
+    - mrdatamapper.akademiano_ansible_bootstrap
