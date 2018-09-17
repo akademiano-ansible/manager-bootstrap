@@ -8,6 +8,7 @@
         creates: "{{ ansible_roles_path }}/{{ item }}/tasks/main.yml"
     with_items: "{{ ansible_roles }}"
   vars:
+    ansible_roles_path: /etc/ansible/roles
     ansible_roles:
       - mrdatamapper.akademiano_ansible_bootstrap
 
