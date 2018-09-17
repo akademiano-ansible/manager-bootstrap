@@ -10,15 +10,26 @@ echo "Update and upgrade all the things..."
 apt-get update -y
 
 #install default ansible version and wget
-apt-get install ansible wget python-pip
+apt-get install ansible wget ca-certificates
 
-#install ansible bootstrap role
-ansible-galaxy install mrdatamapper.akademiano_ansible_bootstrap --roles-path=/etc/ansible/roles
+#update certificates for wget
+update-ca-certificates
 
-#install ansible-toolbox
-pip install git+https://github.com/larsks/ansible-toolbox
+#download bootstrap playbook
+wget -O ansible-bootstrap.yml http://
 
-#run ansible bootstrap playbook
-ansible-role mrdatamapper.akademiano_ansible_bootstrap -i localhost, --connection=local
+ansible-playbook --connection=local 127.0.0.1 ansible-bootstrap.yml
+
+wget -O ansible-roles-preload.yml http://
+
+ansible-playbook --connection=local 127.0.0.1 ansible-roles-preload.yml
+
+#if not exist param with default roles-install playbook url - use akademiano-full
+
+ROLES_URL=
+
+wget -O bootstrap-roles.yml http://
+
+ansible-playbook --connection=local 127.0.0.1 bootstrap-roles.yml
 
 exit 0;

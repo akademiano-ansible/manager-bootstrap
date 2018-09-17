@@ -1,0 +1,13 @@
+---
+- name: Install ansible role fort roles
+  hosts: all
+  tasks:
+    - name: install mrdatamapper.akademiano_ansible_roles
+    command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }} -g"
+      args:
+        creates: "{{ ansible_roles_path }}/{{ item }}/tasks/main.yml"
+    with_items: "{{ ansible_roles }}"
+  vars:
+    ansible_roles:
+      - mrdatamapper.akademiano_ansible_roles
+

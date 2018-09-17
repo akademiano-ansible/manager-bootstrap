@@ -1,0 +1,17 @@
+---
+- name: Install ansible bootstrap role and run it
+  hosts: all
+  tasks:
+    - name: install mrdatamapper.akademiano_ansible_bootstrap
+    command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }} -g"
+      args:
+        creates: "{{ ansible_roles_path }}/{{ item }}/tasks/main.yml"
+    with_items: "{{ ansible_roles }}"
+  vars:
+    ansible_roles:
+      - mrdatamapper.akademiano_ansible_bootstrap
+
+- name: Run ansible bootstrap role
+  hosts: all
+  roles:
+    - mrdatamapper.akademiano_ansible_bootstrap
