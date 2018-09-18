@@ -9,7 +9,13 @@ echo "Update and upgrade all the things..."
 
 apt-get update -y
 
-apt-get dist-upgrade -y
+DEBIAN_FRONTEND=noninteractive \
+
+apt-get \
+-o Dpkg::Options::="--force-confnew" \
+--force-yes \
+-fuy \
+dist-upgrade
 
 #install default ansible version and wget
 apt-get install ansible wget ca-certificates
