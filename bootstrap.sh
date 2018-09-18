@@ -7,7 +7,7 @@ fi
 
 echo "Update and upgrade all the things..."
 
-service stop snapd
+service snapd stop
 
 mv /etc/apt/apt.conf.d/99update-notifier /root/99update-notifier
 
