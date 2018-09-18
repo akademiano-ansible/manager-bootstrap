@@ -26,13 +26,13 @@ update-ca-certificates
 wget -O ansible-bootstrap-1.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-bootstrap-1.yml
 wget -O ansible-bootstrap-2.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-bootstrap-2.yml
 
-ansible-playbook ansible-bootstrap-1.yml
+ansible-playbook ansible-bootstrap-1.yml -v
 
 ansible-playbook ansible-bootstrap-2.yml
 
 wget -O ansible-roles-preload.yml https://raw.githubusercontent.com/akademiano-ansible/linux-bootstrap/master/ansible-roles-preload.yml
 
-ansible-playbook ansible-roles-preload.yml
+ansible-playbook ansible-roles-preload.yml -v
 
 #if not exist param with default roles-install playbook url - use akademiano-full
 
@@ -40,6 +40,6 @@ ROLES_URL=https://gist.githubusercontent.com/mrdatamapper/75fbd48ab24c7e4509cc1c
 
 wget -O ansible-roles-install.yml $ROLES_URL
 
-ansible-playbook ansible-roles-install.yml
+ansible-playbook ansible-roles-install.yml -v
 
 exit 0;
