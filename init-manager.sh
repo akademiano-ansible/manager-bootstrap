@@ -38,13 +38,13 @@ do
 done
 
 #applay defaults
-if [ -z "$AKADEMIANO_REPO" ]  || [ "$AKADEMIANO_REPO"=="-" ]; then
+if [ -z "$AKADEMIANO_REPO" ]  || [ "$AKADEMIANO_REPO"=="!" ]; then
   AKADEMIANO_REPO="$DEF_AKADEMIANO_REPO"
 fi
-if [ -z "$LOCAL_CONFIG_REPO" ] || [ "$LOCAL_CONFIG_REPO"=="-" ]; then
+if [ -z "$LOCAL_CONFIG_REPO" ] || [ "$LOCAL_CONFIG_REPO"=="!" ]; then
   LOCAL_CONFIG_REPO="$DEF_LOCAL_CONFIG_REPO"
 fi
-if [ -z "$ANSIBLE_DIR" ] || [ "$ANSIBLE_DIR"=="-" ]; then
+if [ -z "$ANSIBLE_DIR" ] || [ "$ANSIBLE_DIR"=="!" ]; then
   ANSIBLE_DIR="$DEF_ANSIBLE_DIR"
 fi
 
@@ -130,5 +130,7 @@ ln -s ../local/inventory/
 ln -s ../local/playbooks/
 
 cd ../
+
+echo "Ansible manager initialized. DONE"
 
 exit 0

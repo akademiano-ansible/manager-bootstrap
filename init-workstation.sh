@@ -39,7 +39,7 @@ do
             ;;
         h) print_help
             exit 1
-            ;; 
+            ;;
         *) echo "Неправильный параметр";
             echo "Для вызова справки запустите $ME -h";
             exit 1
@@ -52,8 +52,7 @@ if [[ $(id -u) -ne 0 ]];
   exit 1
 fi
 
-[ -z "ANSIBLE_USER" ] && { echo "Error: not defined ansible manager user name (-u)"; exit 1; }
-
+[ -z "$ANSIBLE_USER" ] && { echo "Error: not defined ansible manager user name (-u)"; exit 1; }
 
 echo "Update and upgrade all the things..."
 
@@ -85,10 +84,16 @@ wget -O bootstrap-ansible-run.yml https://raw.githubusercontent.com/akademiano-a
 ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
 
+echo "Workstation initialized DONE"
+
 #run on user
-$USER_DIR=$(sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME')
+USER_DIR=$(sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME')
+
 cd $USER_DIR;
-wget -o init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
-sudo -u $ANSIBLE_USER "$USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME"
+wget -O init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
+chmod +x init-manager.sh
+sudo -E -H -i -u $ANSIBLE_USER "$USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME"
+
+echo "All DONE. Exit"
 
 exit 0
