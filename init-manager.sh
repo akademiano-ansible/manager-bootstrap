@@ -131,6 +131,6 @@ ln -s ../local/playbooks/
 
 cd ../
 
-echo "Ansible manager initialized. DONE"
+echo "Ansible manager initialized. DONE. Exit"
 
 exit 0

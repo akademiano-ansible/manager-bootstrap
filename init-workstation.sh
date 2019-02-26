@@ -22,9 +22,9 @@ if [ $# = 0 ]; then
 fi
 
 #empty values
-AKADEMIANO_REPO="-"
-LOCAL_CONFIG_REPO="-"
-ANSIBLE_DIR_NAME="-"
+AKADEMIANO_REPO="!"
+LOCAL_CONFIG_REPO="!"
+ANSIBLE_DIR_NAME="!"
 
 while getopts ":u:a:l:d:h" opt ;
 do
@@ -92,7 +92,7 @@ USER_DIR=$(sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME')
 cd $USER_DIR;
 wget -O init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
 chmod +x init-manager.sh
-sudo -E -H -i -u $ANSIBLE_USER "$USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME"
+sudo -E -H -i -u $ANSIBLE_USER $USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME
 
 echo "All DONE. Exit"
 
