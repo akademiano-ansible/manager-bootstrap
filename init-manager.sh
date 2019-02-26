@@ -1,14 +1,51 @@
 #!/bin/bash
 
-LOCAL_CONFIG_REPO=""
-AKADEMIANO_REPO="https://github.com/akademiano-ansible/ansible-app.git"
+#default values
+DEF_LOCAL_CONFIG_REPO=""
+DEF_AKADEMIANO_REPO="https://github.com/akademiano-ansible/ansible-app.git"
+DATE=`date +%Y-%m-%d`
+DEF_ANSIBLE_DIR="ansible-$DATE"
 
-#ansible dir name
-ANSIBLE_DIR="ansible-new"
+ME=`basename $0`
+function print_help() {
+    echo "Настройка Ansible"
+    echo
+    echo "Использование: $ME options..."
+    echo "Параметры:"
+    echo "  -a          akademiano library repo url"
+    echo "  -l          local repo url"
+    echo "  -d          ansible dir name"
+    echo
+}
 
-#input
-if [ ! -z "$1" ] ; then
-  LOCAL_CONFIG_REPO=$1
+while getopts ":a:l:d:h" opt ;
+do
+    case $opt in
+        a) AKADEMIANO_REPO=$OPTARG;
+            ;;
+        l) LOCAL_CONFIG_REPO=$OPTARG;
+            ;;
+        d) ANSIBLE_DIR_NAME=$OPTARG;
+            ;;
+        h) print_help
+            exit 1
+            ;; 
+        *) echo "Неправильный параметр";
+            echo "Для вызова справки запустите $ME -h";
+            exit 1
+            ;;
+        esac
+done
+
+#applay defaults
+if [ -z "$AKADEMIANO_REPO" ]  || [ "$AKADEMIANO_REPO"=="-" ]; then
+  AKADEMIANO_REPO="$DEF_AKADEMIANO_REPO"
+fi
+if [ -z "$LOCAL_CONFIG_REPO" ] || [ "$LOCAL_CONFIG_REPO"=="-" ]; then
+  LOCAL_CONFIG_REPO="$DEF_LOCAL_CONFIG_REPO"
+fi
+if [ -z "$ANSIBLE_DIR" ] || [ "$ANSIBLE_DIR"=="-" ]; then
+  ANSIBLE_DIR="$DEF_ANSIBLE_DIR"
 fi
 
 #check vars
@@ -30,10 +67,10 @@ cd $ANSIBLE_DIR
 mkdir {app,bin,data,local}
 
 #clone git akademiano and local
-git clone $AKADEMIANO_REPO app/akademiano
+git clone -q $AKADEMIANO_REPO app/akademiano
 
 if [ ! -z "$LOCAL_CONFIG_REPO" ]; then
-  git clone $LOCAL_CONFIG_REPO local
+  git clone -q $LOCAL_CONFIG_REPO local
 fi
 
 ####### prepare local

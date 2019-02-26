@@ -1,14 +1,14 @@
 ---
-- name: Install ansible role fort roles
+- name: Install ansible bootstrap role
   hosts: 127.0.0.1
   connection: local
   tasks:
-    - name: install mrdatamapper.akademiano_ansible_roles
-      command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }} -g"
+    - name: install mrdatamapper.akademiano_ansible_bootstrap
+      command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }}"
       args:
         creates: "{{ ansible_roles_path }}/{{ item }}/tasks/main.yml"
       with_items: "{{ ansible_roles }}"
   vars:
     ansible_roles_path: /etc/ansible/roles
     ansible_roles:
-      - mrdatamapper.akademiano_ansible_roles
+      - mrdatamapper.akademiano_ansible_bootstrap
