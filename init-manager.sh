@@ -25,7 +25,7 @@ do
             ;;
         l) LOCAL_CONFIG_REPO=$OPTARG;
             ;;
-        d) ANSIBLE_DIR_NAME=$OPTARG;
+        d) ANSIBLE_DIR=$OPTARG;
             ;;
         h) print_help
             exit 1
@@ -38,19 +38,21 @@ do
 done
 
 #applay defaults
-if [ -z "$AKADEMIANO_REPO" ]  || [ "$AKADEMIANO_REPO"=="!" ]; then
+if [ -z "$AKADEMIANO_REPO" ]  || [ "$AKADEMIANO_REPO" = "!" ]; then
   AKADEMIANO_REPO="$DEF_AKADEMIANO_REPO"
 fi
-if [ -z "$LOCAL_CONFIG_REPO" ] || [ "$LOCAL_CONFIG_REPO"=="!" ]; then
+if [ -z "$LOCAL_CONFIG_REPO" ] || [ "$LOCAL_CONFIG_REPO" = "!" ]; then
   LOCAL_CONFIG_REPO="$DEF_LOCAL_CONFIG_REPO"
 fi
-if [ -z "$ANSIBLE_DIR" ] || [ "$ANSIBLE_DIR"=="!" ]; then
+if [ -z "$ANSIBLE_DIR" ] || [ "$ANSIBLE_DIR" = "!" ]; then
   ANSIBLE_DIR="$DEF_ANSIBLE_DIR"
 fi
 
 #check vars
 [ -z "$AKADEMIANO_REPO" ] && { echo "Error: not defined AKADEMIANO_REPO"; exit 1; }
 [ -z "$ANSIBLE_DIR" ] && { echo "Error: not defined ANSIBLE_DIR"; exit 1; }
+
+cd ~/
 
 #check dir not exist or empty
 if [ -d "$ANSIBLE_DIR" ]; then
