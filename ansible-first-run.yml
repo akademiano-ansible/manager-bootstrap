@@ -1,0 +1,42 @@
+- name: prepare local ansible
+  hosts: 127.0.0.1
+  connection: local
+  vars:
+    vault_password_generated: "{{ lookup('password', 'ansible_vault_secret  length=16 chars=ascii_letters,digits') }}"    
+
+  vars_prompt:
+    - name: "git_username"
+      prompt: "what is your git username?"
+      private: no
+    - name: "git_useremail"
+      prompt: "what is your git email?"
+      private: no
+
+  tasks:
+    - set_fact:
+        vault_password: "{{ vault_password_generated }}"
+
+    - file:
+        path: ansible_vault_secret
+        state: file
+        mode: 0600
+
+    - shell: git config --global user.name "{{git_username}}"
+      args:
+        executable: /bin/bash
+
+    - shell: git config --global user.email "{{git_useremail}}"
+      args:
+        executable: /bin/bash
+
+    - shell: git config --global core.excludesfile ~/.gitignore_global
+      args:
+        executable: /bin/bash
+
+    - copy:
+        dest: ~/.gitignore_global
+        content: |
+          meta/.galaxy_install_info
+          *_vault.yml
+        force: no
+        mode: 0640

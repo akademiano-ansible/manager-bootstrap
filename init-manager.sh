@@ -66,7 +66,7 @@ fi
 ####### prepare dirs structure in home dir
 mkdir $ANSIBLE_DIR
 cd $ANSIBLE_DIR
-mkdir {app,bin,data,local}
+mkdir {app,bin,data,local,roles}
 
 #clone git akademiano and local
 git clone -q $AKADEMIANO_REPO app/akademiano
@@ -108,6 +108,7 @@ ln -s ../../app/akademiano/inventory/__akademiano-*.yml ./
 cd ../
 
 if [ ! -f .gitignore ]; then
+  echo "roles/" >> .gitignore
   echo "playbooks/akademiano-*.yml" >> .gitignore
   echo "playbooks/group_vars" >> .gitignore
   echo "playbooks/host_vars" >> .gitignore
@@ -130,8 +131,11 @@ ln -s ../local/ansible.cfg
 ln -s ../local/requirements.yml
 ln -s ../local/inventory/
 ln -s ../local/playbooks/
+ln -s ../roles/
 
 cd ../
+
+wget -O ansible-first-run.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/ansible-first-run.sh
 
 echo "Ansible manager initialized. DONE. Exit"
 

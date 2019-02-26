@@ -71,7 +71,7 @@ apt-get \
 dist-upgrade
 
 #install default ansible version and wget
-apt-get install ansible wget ca-certificates -y
+apt-get install ansible wget ca-certificates git -y
 
 #update certificates for wget
 update-ca-certificates
