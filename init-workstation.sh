@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 ME=`basename $0`
@@ -32,9 +33,9 @@ do
             ;;
         a) AKADEMIANO_REPO=$OPTARG;
             ;;
-        l) LOCAL_CONFIG_REPO=$OPTARG
+        l) LOCAL_CONFIG_REPO=$OPTARG;
             ;;
-        d) ANSIBLE_DIR_NAME=$OPTARG
+        d) ANSIBLE_DIR_NAME=$OPTARG;
             ;;
         h) print_help
             exit 1
@@ -84,9 +85,9 @@ ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
 
 #run on user
-$USER_DIR=sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME'
+$USER_DIR=$(sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME')
 cd $USER_DIR;
 wget -o init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
-sudo -u $ANSIBLE_USER "$USER_DIR/init-manager.sh" -a "$AKADEMIANO_REPO" -l "$LOCAL_CONFIG_REPO" -d "$ANSIBLE_DIR_NAME"
+sudo -u $ANSIBLE_USER "$USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME"
 
-exit 0;
+exit 0
