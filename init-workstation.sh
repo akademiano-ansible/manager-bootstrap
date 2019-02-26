@@ -52,7 +52,8 @@ if [[ $(id -u) -ne 0 ]];
   exit 1
 fi
 
-if [ -z "ANSIBLE_USER" ] && { echo "Error: not defined ansible manager user name (-u)"; exit 1; }
+[ -z "ANSIBLE_USER" ] && { echo "Error: not defined ansible manager user name (-u)"; exit 1; }
+
 
 echo "Update and upgrade all the things..."
 
