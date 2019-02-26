@@ -115,8 +115,8 @@ if [ ! -f .gitignore ]; then
 fi
 
 if [ ! -d .git ]; then
-    git init
-    git add .
+    git init > /dev/null
+    git add . > /dev/null
 fi
 cd ../
 
