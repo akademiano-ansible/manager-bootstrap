@@ -83,7 +83,7 @@
             prompt: "Enter deploy key password"
             echo: no
           register: deploy_key_input_password
-          when: deploy_key_vault_password | length == 0
+          when: deploy_key_vault_password  is none or deploy_key_vault_password | length == 0
 
         - set_fact:
             deploy_key_vault_password: "{{deploy_key_input_password.user_input}}"
@@ -151,7 +151,7 @@
             path: "/root/.ssh/config"
             block: |
               Include {{ansible_config_dir}}/ssh_deploy_key.config
-      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is defined and ansible_deploy_key_url | length >0
+      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is not none and ansible_deploy_key_url | length > 0
       
     - name: create bin directory
       file:
@@ -173,7 +173,7 @@
         dest: "{{ansible_lib_path}}"
         accept_hostkey: yes
         key_file: "{{ansible_deploy_key}}"
-      when: ansible_lib_repo is not none and ansible_lib_installed.matched == 0
+      when: ansible_lib_repo is not none and ansible_lib_repo | length > 0 and ansible_lib_installed.matched == 0
 
     - name: check local lib repo installed
       find:
@@ -186,7 +186,7 @@
         repo: "{{ansible_local_repo}}"
         dest: "{{ansible_local_path}}"
         accept_hostkey: yes
-      when: ansible_local_repo is not none and local_deploy_key  is not none and ansible_local_installed.matched == 0
+      when: ansible_local_repo is not none and ansible_local_repo | length > 0 and local_deploy_key is not none and local_deploy_key | length > 0 and ansible_local_installed.matched == 0
 
     - name: create directory | local
       file:
