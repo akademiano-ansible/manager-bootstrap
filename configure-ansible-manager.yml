@@ -151,7 +151,7 @@
             path: "/root/.ssh/config"
             block: |
               Include {{ansible_config_dir}}/ssh_deploy_key.config
-      when: not deploy_key_check.stat.exists and ansible_deploy_key_url | length >0
+      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is defined and ansible_deploy_key_url | length >0
       
     - name: create bin directory
       file:
