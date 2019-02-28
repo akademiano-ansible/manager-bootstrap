@@ -45,12 +45,8 @@
         - bin
         - data
         - conf
-        - local/inventory
-        - local/vars/host_vars
-        - local/vars/group_vars
-        - local/playbooks
+        - local
         - roles
-        - app
         - work
 
     - set_fact:
@@ -59,7 +55,7 @@
         ansible_directory_main: "{{ansible_directory}}/main"
         ansible_data_dir: "{{ansible_directory}}/data"
         ansible_config_dir: "{{ansible_directory}}/conf"
-        ansible_deploy_key: "{{ansible_directory}}/id_akademiano_public_deploy_key_ed25519"
+        ansible_deploy_key: "{{ansible_directory}}/data/id_akademiano_public_deploy_key_ed25519"
 
     - name: download deploy key
       get_url:
@@ -80,12 +76,13 @@
         path: "/root/.ssh/config"
         owner: root
         group: root
-        state: directory
+        state: touch
         mode: 0600
+      changed_when: false
 
     - name: prepare ssh .config  | prepare deploy key config
       copy:
-        dest: "{{ansible_config}}/ssh_deploy_key.config"
+        dest: "{{ansible_config_dir}}/ssh_deploy_key.config"
         content: |
           Host *
             IdentityFile {{ansible_deploy_key}}
@@ -96,7 +93,7 @@
       blockinfile:
         path: "/root/.ssh/config"
         block: |
-          Include {{ansible_config}}/ssh_deploy_key.config
+          Include {{ansible_config_dir}}/ssh_deploy_key.config
 
     - name: create bin directory
       file:
@@ -124,7 +121,7 @@
         dest: "{{ansible_lib_path}}"
         accept_hostkey: yes
         key_file: "{{ansible_deploy_key}}"
-      when: ansible_lib_repo is not empty and ansible_lib_installed.matched > 0
+      when: ansible_lib_repo is not none and ansible_lib_installed.matched == 0
 
     - name: check local lib repo installed
       find:
@@ -137,7 +134,21 @@
         repo: "{{ansible_local_repo}}"
         dest: "{{ansible_local_path}}"
         accept_hostkey: yes
-      when: ansible_local_repo is not empty and local_deploy_key is not empty and ansible_local_installed.matched > 0
+      when: ansible_local_repo is not none and local_deploy_key  is not none and ansible_local_installed.matched == 0
+
+    - name: create directory | local
+      file:
+        path: "{{ansible_directory}}/{{item}}"
+        owner: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        recurse: yes
+        mode: "{{ansible_dirmode}}"
+        state: directory
+      loop:
+        - local/inventory
+        - local/vars/host_vars
+        - local/vars/group_vars
+        - local/playbooks
 
     - name: create links in local from lib
       file:
@@ -145,21 +156,21 @@
         dest: "{{ansible_local_path}}/{{item}}"
         state: link
       loop:
-        - "{{ansible_lib_path}}/ansible.cfg"
-        - "{{ansible_lib_path}}/requirements.yml"
+        - "ansible.cfg"
+        - "requirements.yml"
 
     - name: create links in local from lib playbooks
       file:
-        src: "../../lib/{{ansible_lib_name}}/playbooks/{{item}}"
-        dest: "{{ansible_local_path}}/{{item}}"
+        src: "../../lib/{{ansible_lib_name}}/playbooks/{{item|basename}}"
+        dest: "{{ansible_local_path}}/playbooks/{{item|basename}}"
         state: link
       with_fileglob:
         - "{{ansible_lib_path}}/playbooks/akademiano-*.yml"
 
     - name: create links in local from lib playbooks
       file:
-        src: "../../lib/{{ansible_lib_name}}/inventory/{{item}}"
-        dest: "{{ansible_local_path}}/{{item}}"
+        src: "../../lib/{{ansible_lib_name}}/inventory/{{item|basename}}"
+        dest: "{{ansible_local_path}}/inventory/{{item|basename}}"
         state: link
       with_fileglob:
         - "{{ansible_lib_path}}/inventory/akademiano-*.yml"
@@ -197,13 +208,20 @@
     - name: create links in work to local
       file:
         src: "../local/{{item}}"
-        dest: "{{ansible_directory}}/main/{{item}}"
+        dest: "{{ansible_directory}}/work/{{item}}"
         state: link
       loop:
         - ansible.cfg
         - requirements.yml
         - inventory
         - playbooks
+
+    - name: create links from main to work
+      file:
+        src: "../{{item}}"
+        dest: "{{ansible_directory}}/work/{{item}}"
+        state: link
+      loop:
         - roles
 
     - name: generate ansible vault
