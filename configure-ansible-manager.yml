@@ -33,7 +33,7 @@
     - set_fact:
         ansible_first_manager: "{{ext_ansible_first_manager}}"
       when: ext_ansible_first_manager is defined and ext_ansible_first_manager | length > 0
-  
+
     - name: create group
       group:
         name: "{{ansible_group}}"
@@ -99,7 +99,7 @@
             content: |
                 {{deploy_key_vault_password}}
             force: yes
-            mode: "{{ansible_filemode}}"
+            mode: 0600
         
         - name: deploy key | decrypt
           command: "ansible-vault decrypt {{ansible_deploy_key}}.vault --output={{ansible_deploy_key}} --vault-password-file=~/.deploy_key_vault_secret"
@@ -111,6 +111,41 @@
             path: "~/.deploy_key_vault_secret"
             state: absent
 
+        - name: deploy key | set permissions
+          file:
+            path: "{{ansible_deploy_key}}"
+            owner: "{{ansible_first_manager}}"
+            group: "{{ansible_group}}"
+            state: file
+            mode: 0660
+
+        - name: prepare ssh .config  | prepare deploy key config
+          copy:
+            dest: "{{ansible_config_dir}}/ssh_deploy_key.config"
+            content: |
+              Host *
+                IdentityFile ~/.ssh/id_deploy_key
+            force: no
+            owner: "{{ansible_first_manager}}"
+            group: "{{ansible_group}}"
+            mode: 0660
+
+        - name: prepare ssh .config | set permissions to config
+          file:
+            path: "{{ansible_config_dir}}/ssh_deploy_key.config"
+            owner: "{{ansible_first_manager}}"
+            group: "{{ansible_group}}"
+            state: file
+            mode: 0660
+
+        - name: deploy key | check exist second
+          stat:
+            path: "{{ansible_deploy_key}}"
+          register: deploy_key_check_second
+      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is not none and ansible_deploy_key_url | length > 0
+
+    - name: Add deploy key to root
+      block:
         - name: prepare ssh .config | root | init .ssh dir
           file:
             path: "/root/.ssh"
@@ -127,32 +162,51 @@
             group: root
             state: touch
             mode: 0600
-          changed_when: false
 
-        - name: prepare ssh .config  | prepare deploy key config
+        - name: prepare ssh .config | root | copy for include
           copy:
-            dest: "{{ansible_config_dir}}/ssh_deploy_key.config"
-            content: |
-              Host *
-                IdentityFile {{ansible_deploy_key}}
-            force: no
-            mode: "{{ansible_filemode}}"
-        
-        - name: prepare ssh .config  | disable host keys checking
-          lineinfile:
-            path: "{{ansible_config_dir}}/ssh_deploy_key.config"        
-            insertafter: "^Host /*$"
-            line: "StrictHostKeyChecking no"
-          changed_when: false
-          register: disable_host_keys_checking
+            src: "{{ansible_config_dir}}/ssh_deploy_key.config"
+            dest: "/root/.ssh/ssh_deploy_key.config"
+            remote_src: yes
+
+        - name: prepare ssh .config | root | deploy config file permissions
+          file:
+            path: "/root/.ssh/ssh_deploy_key.config"
+            owner: root
+            group: root
+            state: file
+            mode: 0600
+
+        - name: prepare ssh .config | root | copy identity key
+          copy:
+            src: "{{ansible_deploy_key}}"
+            dest: "/root/.ssh/id_deploy_key"
+            remote_src: yes
+
+        - name: prepare ssh .config | root | identity key file permissions
+          file:
+            path: "/root/.ssh/id_deploy_key"
+            owner: root
+            group: root
+            state: file
+            mode: 0600
 
         - name: prepare ssh .config | root | add include for deploy key
           blockinfile:
             path: "/root/.ssh/config"
             block: |
-              Include {{ansible_config_dir}}/ssh_deploy_key.config
-      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is not none and ansible_deploy_key_url | length > 0
-      
+              Include ~/.ssh/ssh_deploy_key.config
+          register: exist_root_ssh_deploy_key
+        
+        - name: prepare ssh .config  | disable host keys checking
+          lineinfile:
+            path: "/root/.ssh/ssh_deploy_key.config"
+            insertafter: "^Host /*$"
+            line: "StrictHostKeyChecking no"
+          changed_when: false
+          register: disable_host_keys_checking
+      when: (deploy_key_check is defined and deploy_key_check.stat.exists) or (deploy_key_check_second is defined and deploy_key_check_second.stat.exists)
+
     - name: create bin directory
       file:
         path: "{{ansible_directory}}/bin"
@@ -291,17 +345,34 @@
         group: "{{ansible_group}}"
         mode: "{{ansible_filemode}}"
 
-    - name: install ansible roles
+    - name: install ansible roles | install
       command: "ansible-galaxy install  --ignore-errors --keep-scm-meta --roles-path {{ansible_directory}}/roles -r {{ansible_directory}}/work/requirements.yml"
+      args:
+        chdir: "{{ansible_directory}}"
+
+    - name: install ansible roles | chown
+      command: "chown -R {{ansible_first_manager}}:{{ansible_group}}  {{ansible_directory}}/roles"
+      args:
+        chdir: "{{ansible_directory}}"
+
+    - name: install ansible roles | chmod
+      command: "chmod -R {{ansible_dirmode}} {{ansible_directory}}/roles"
       args:
         chdir: "{{ansible_directory}}"
         
     - name: prepare ssh .config  | enable host keys checking
       lineinfile:
-        path: "{{ansible_config_dir}}/ssh_deploy_key.config"
+        path: "/root/.ssh/ssh_deploy_key.config"
         insertafter: "^Host /*$"
         line: "StrictHostKeyChecking no"
         state: absent
       when: disable_host_keys_checking is defined
       changed_when: false
-        
+
+    - name: prepare ssh .config | root | rm include for deploy key
+      blockinfile:
+        path: "/root/.ssh/config"
+        block: |
+          Include ssh_deploy_key.config
+        state: absent
+      when: exist_root_ssh_deploy_key is defined
