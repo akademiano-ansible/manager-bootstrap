@@ -9,10 +9,10 @@ function print_help() {
     echo "Использование: $ME options..."
     echo "Параметры:"
     echo "  -u          ansible first user"
-    echo "  -g          ansible group"
-    echo "  -a          akademiano library repo url"
-    echo "  -l          local repo url"
-    echo "  -d          ansible dir name"
+    echo "  -a          akademiano repo lib url"
+    echo "  -l          local repo lib url"
+    echo "  -k          deploy key url"
+    echo "  -p          deploy key password"
     echo
 }
 
@@ -23,11 +23,11 @@ if [ $# = 0 ]; then
 fi
 
 #empty values
-AKADEMIANO_REPO="!"
-LOCAL_CONFIG_REPO="!"
-ANSIBLE_DIR_NAME="!"
-
-ANSIBLE_MANAGER_GROUP="ansible-manager"
+AKADEMIANO_REPO=""
+LOCAL_CONFIG_REPO=""
+FIRST_USER=""
+DEPLOY_KEY_URL=""
+DEPLOY_KEY_PASSWORD=""
 
 while getopts ":u:a:l:d:h" opt ;
 do
@@ -36,13 +36,12 @@ do
             ;;
         l) LOCAL_CONFIG_REPO=$OPTARG;
             ;;
-        d) ANSIBLE_DIR_NAME=$OPTARG;
+        u) FIRST_USER=$OPTARG;
             ;;
-        u) ANSIBLE_DIR_NAME=$OPTARG;
+        k) DEPLOY_KEY_URL=$OPTARG;
             ;;
-        g) ANSIBLE_DIR_NAME=$OPTARG;
+        p) DEPLOY_KEY_PASSWORD=$OPTARG;
             ;;
-            
         h) print_help
             exit 1
             ;;
@@ -57,8 +56,6 @@ if [[ $(id -u) -ne 0 ]];
   then echo "Please run as root!"
   exit 1
 fi
-
-[ -z "$ANSIBLE_USER" ] && { echo "Error: not defined ansible manager user name (-u)"; exit 1; }
 
 echo "Update and upgrade all the things..."
 
@@ -77,7 +74,7 @@ apt-get \
 dist-upgrade
 
 #install default ansible version and wget
-apt-get install ansible wget ca-certificates git -y
+apt-get install ansible wget ca-certificates git jq -y
 
 #update certificates for wget
 update-ca-certificates
@@ -85,19 +82,16 @@ update-ca-certificates
 #download bootstrap playbook
 wget -O bootstrap-ansible-prepare.yml https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/bootstrap-ansible-prepare.yml
 wget -O bootstrap-ansible-run.yml https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/bootstrap-ansible-run.yml
+wget -O configure-ansible-manager.yml https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/configure-ansible-manager.yml
 
 #run playbooks
 ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
 
-echo "Workstation initialized DONE"
+EXTVARS=$(printf '{"ext_ansible_lib_repo":"%s","ext_ansible_local_repo":"%s","ext_ansible_deploy_key_url":"%s", "ext_deploy_key_vault_password:"%s", "ext_ansible_first_manager": "%s"}\n' "$AKADEMIANO_REPO" "$LOCAL_CONFIG_REPO" "$DEPLOY_KEY_URL" "$DEPLOY_KEY_PASSWORD" "$FIRST_USER" | | jq -c .)
 
+ansible-playbook configure-ansible-manager.yml -vv  --extra-vars '$EXTVARS'
 
-#cd $USER_DIR;
-#wget -O init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
-#chmod +x init-manager.sh
-#sudo -E -H -i -u $ANSIBLE_USER $USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME
-
-#echo "All DONE. Exit"
+echo "Workstation initialized. DONE"
 
 exit 0

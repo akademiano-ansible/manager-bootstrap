@@ -33,7 +33,4 @@
           *.retry
         force: no
         mode: 0640
-
-    - name: install ansible roles
-        command: "ansible-galaxy install  --keep-scm-meta --roles-path {{ansible_directory}}/roles -r {{ansible_directory}}/requirements.yml"
-          chdir: "{{ansible_directory}}"
+        
