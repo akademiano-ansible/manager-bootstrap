@@ -6,6 +6,7 @@
     ansible_roles_path: /etc/ansible/roles
     ansible_roles:
       - mrdatamapper.akademiano_ansible_bootstrap
+
     ansible_group: ansible-managers
     ansible_first_manager: root
     ansible_directory: /opt/ansible
@@ -18,7 +19,6 @@
     ansible_vault_path: "{{ansible_directory}}/.ansible_vault_secret"
 
     vault_password_generated: "{{ lookup('password', 'ansible_vault_secret  length=16 chars=ascii_letters,digits') }}"
-
 
   tasks:
     - name: create group
@@ -35,14 +35,16 @@
     - name: create directory
       file:
         path: "{{ansible_directory}}/{{item}}"
-      owner: "{{ansible_first_manager}}"
-      group: "{{ansible_group}}"
-      recurse: yes
-      mode: "{{ansible_dirmode}}"
+        owner: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        recurse: yes
+        mode: "{{ansible_dirmode}}"
+        state: directory
       loop:
         - lib
         - bin
         - data
+        - conf
         - local/inventory
         - local/vars/host_vars
         - local/vars/group_vars
@@ -51,13 +53,58 @@
         - app
         - work
 
+    - set_fact:
+        ansible_lib_path: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
+        ansible_local_path: "{{ansible_directory}}/local"
+        ansible_directory_main: "{{ansible_directory}}/main"
+        ansible_data_dir: "{{ansible_directory}}/data"
+        ansible_config_dir: "{{ansible_directory}}/conf"
+        ansible_deploy_key: "{{ansible_directory}}/id_akademiano_public_deploy_key_ed25519"
+
+    - name: download deploy key
+      get_url:
+        url: https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/keys/id_akademiano_public_deploy_key_ed25519
+        dest: "{{ansible_deploy_key}}"
+
+    - name: prepare ssh .config | root | init .ssh dir
+      file:
+        path: "/root/.ssh"
+        owner: root
+        group: root
+        recurse: yes
+        state: directory
+        mode: 0600
+
+    - name: prepare ssh .config | root | init config
+      file:
+        path: "/root/.ssh/config"
+        owner: root
+        group: root
+        state: directory
+        mode: 0600
+
+    - name: prepare ssh .config  | prepare deploy key config
+      copy:
+        dest: "{{ansible_config}}/ssh_deploy_key.config"
+        content: |
+          Host *
+            IdentityFile {{ansible_deploy_key}}
+        force: no
+        mode: "{{ansible_filemode}}"
+
+    - name: prepare ssh .config | root | add include for deploy key
+      blockinfile:
+        path: "/root/.ssh/config"
+        block: |
+          Include {{ansible_config}}/ssh_deploy_key.config
+
     - name: create bin directory
       file:
         path: "{{ansible_directory}}/bin"
-      owner: "{{ansible_first_manager}}"
-      group: "{{ansible_group}}"
-      recurse: yes
-      mode: "{{ansible_dirmode}}"
+        owner: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        recurse: yes
+        mode: "{{ansible_dirmode}}"
 
     - name: install mrdatamapper.akademiano_ansible_bootstrap
       command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }}"
@@ -71,15 +118,12 @@
         patterns: "*"
       register:  ansible_lib_installed
 
-    - set_fact:
-        ansible_lib_path: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
-        ansible_local_path: "{{ansible_directory}}/local"
-        ansible_directory_main: "{{ansible_directory}}/main"
-
     - name: clone lib
       git:
         repo: "{{ansible_lib_repo}}"
         dest: "{{ansible_lib_path}}"
+        accept_hostkey: yes
+        key_file: "{{ansible_deploy_key}}"
       when: ansible_lib_repo is not empty and ansible_lib_installed.matched > 0
 
     - name: check local lib repo installed
@@ -92,7 +136,8 @@
       git:
         repo: "{{ansible_local_repo}}"
         dest: "{{ansible_local_path}}"
-      when: ansible_local_repo is not empty and ansible_local_installed.matched > 0
+        accept_hostkey: yes
+      when: ansible_local_repo is not empty and local_deploy_key is not empty and ansible_local_installed.matched > 0
 
     - name: create links in local from lib
       file:
@@ -112,13 +157,13 @@
         - "{{ansible_lib_path}}/playbooks/akademiano-*.yml"
 
     - name: create links in local from lib playbooks
-        file:
-          src: "../../lib/{{ansible_lib_name}}/inventory/{{item}}"
-          dest: "{{ansible_local_path}}/{{item}}"
-          state: link
-        with_fileglob:
-          - "{{ansible_lib_path}}/inventory/akademiano-*.yml"
-          - "{{ansible_lib_path}}/inventory/__akademiano-*.yml"
+      file:
+        src: "../../lib/{{ansible_lib_name}}/inventory/{{item}}"
+        dest: "{{ansible_local_path}}/{{item}}"
+        state: link
+      with_fileglob:
+        - "{{ansible_lib_path}}/inventory/akademiano-*.yml"
+        - "{{ansible_lib_path}}/inventory/__akademiano-*.yml"
 
     - name: create links in local playbooks to vars
       file:
@@ -144,7 +189,8 @@
         mode: "{{ansible_filemode}}"
 
     - name: create git repo
-      command: git init
+      command: "git init"
+      args:
         creates: "{{ansible_local_path}}/.git"
         chdir: "{{ansible_local_path}}"
 

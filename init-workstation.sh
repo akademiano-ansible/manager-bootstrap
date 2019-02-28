@@ -89,11 +89,8 @@ wget -O bootstrap-ansible-run.yml https://raw.githubusercontent.com/akademiano-a
 #run playbooks
 ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
-#second run after update ansible
-ansible-playbook bootstrap-ansible-run.yml -vv
 
 echo "Workstation initialized DONE"
-
 
 
 #cd $USER_DIR;

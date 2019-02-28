@@ -30,6 +30,7 @@
         content: |
           meta/.galaxy_install_info
           *_vault.yml
+          *.retry
         force: no
         mode: 0640
 
