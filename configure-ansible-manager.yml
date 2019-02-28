@@ -87,7 +87,7 @@
 
         - set_fact:
             deploy_key_vault_password: "{{deploy_key_input_password.user_input}}"
-          when: deploy_key_input_password is defined and deploy_key_input_password.user_input is not none and deploy_key_input_password.user_input | length >0
+          when: deploy_key_input_password is defined and deploy_key_input_password.user_input is defined and deploy_key_input_password.user_input | length >0
       
         - name: deploy key | download
           get_url:
