@@ -2,13 +2,171 @@
 - name: Install ansible bootstrap role
   hosts: 127.0.0.1
   connection: local
+  vars:
+    ansible_roles_path: /etc/ansible/roles
+    ansible_roles:
+      - mrdatamapper.akademiano_ansible_bootstrap
+    ansible_group: ansible-managers
+    ansible_first_manager: root
+    ansible_directory: /opt/ansible
+
+    ansible_lib_repo: "https://github.com/akademiano-ansible/ansible-app.git"
+    ansible_lib_name: akademiano
+    ansible_local_repo:
+    ansible_dirmode:  "g+s,u+rwX,g+rwX,o-rwx"
+    ansible_filemode:  "g+s,u+rwX,g+rwX,o-rwx"
+    ansible_vault_path: "{{ansible_directory}}/.ansible_vault_secret"
+
+    vault_password_generated: "{{ lookup('password', 'ansible_vault_secret  length=16 chars=ascii_letters,digits') }}"
+
+
   tasks:
+    - name: create group
+      group:
+        name: "{{ansible_group}}"
+        state: present
+
+    - name: add user to group
+      user:
+        name: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        append: yes
+
+    - name: create directory
+      file:
+        path: "{{ansible_directory}}/{{item}}"
+      owner: "{{ansible_first_manager}}"
+      group: "{{ansible_group}}"
+      recurse: yes
+      mode: "{{ansible_dirmode}}"
+      loop:
+        - lib
+        - bin
+        - data
+        - local/inventory
+        - local/vars/host_vars
+        - local/vars/group_vars
+        - local/playbooks
+        - roles
+        - app
+        - work
+
+    - name: create bin directory
+      file:
+        path: "{{ansible_directory}}/bin"
+      owner: "{{ansible_first_manager}}"
+      group: "{{ansible_group}}"
+      recurse: yes
+      mode: "{{ansible_dirmode}}"
+
     - name: install mrdatamapper.akademiano_ansible_bootstrap
       command: "ansible-galaxy install {{ item }} --roles-path={{ ansible_roles_path }}"
       args:
         creates: "{{ ansible_roles_path }}/{{ item }}/tasks/main.yml"
       with_items: "{{ ansible_roles }}"
-  vars:
-    ansible_roles_path: /etc/ansible/roles
-    ansible_roles:
-      - mrdatamapper.akademiano_ansible_bootstrap
+
+    - name: check lib repo installed
+      find:
+        paths: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
+        patterns: "*"
+      register:  ansible_lib_installed
+
+    - set_fact:
+        ansible_lib_path: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
+        ansible_local_path: "{{ansible_directory}}/local"
+        ansible_directory_main: "{{ansible_directory}}/main"
+
+    - name: clone lib
+      git:
+        repo: "{{ansible_lib_repo}}"
+        dest: "{{ansible_lib_path}}"
+      when: ansible_lib_repo is not empty and ansible_lib_installed.matched > 0
+
+    - name: check local lib repo installed
+      find:
+        paths: "{{ansible_directory}}/local"
+        patterns: "*"
+      register:  ansible_local_installed
+
+    - name: clone local
+      git:
+        repo: "{{ansible_local_repo}}"
+        dest: "{{ansible_local_path}}"
+      when: ansible_local_repo is not empty and ansible_local_installed.matched > 0
+
+    - name: create links in local from lib
+      file:
+        src: "../lib/{{ansible_lib_name}}/{{item}}"
+        dest: "{{ansible_local_path}}/{{item}}"
+        state: link
+      loop:
+        - "{{ansible_lib_path}}/ansible.cfg"
+        - "{{ansible_lib_path}}/requirements.yml"
+
+    - name: create links in local from lib playbooks
+      file:
+        src: "../../lib/{{ansible_lib_name}}/playbooks/{{item}}"
+        dest: "{{ansible_local_path}}/{{item}}"
+        state: link
+      with_fileglob:
+        - "{{ansible_lib_path}}/playbooks/akademiano-*.yml"
+
+    - name: create links in local from lib playbooks
+        file:
+          src: "../../lib/{{ansible_lib_name}}/inventory/{{item}}"
+          dest: "{{ansible_local_path}}/{{item}}"
+          state: link
+        with_fileglob:
+          - "{{ansible_lib_path}}/inventory/akademiano-*.yml"
+          - "{{ansible_lib_path}}/inventory/__akademiano-*.yml"
+
+    - name: create links in local playbooks to vars
+      file:
+        src: "../vars/{{item}}"
+        dest: "{{ansible_local_path}}/playbooks/{{item}}"
+        state: link
+      loop:
+        - host_vars
+        - group_vars
+
+    - name: prepare .gitignore
+      copy:
+        dest: "{{ansible_local_path}}/.gitignore"
+        content: |
+          roles/
+          playbooks/akademiano-*.yml
+          playbooks/group_vars
+          playbooks/host_vars
+          inventory/__akademiano-*.yml
+          ansible.cfg
+          requirements.yml
+        force: no
+        mode: "{{ansible_filemode}}"
+
+    - name: create git repo
+      command: git init
+        creates: "{{ansible_local_path}}/.git"
+        chdir: "{{ansible_local_path}}"
+
+    - name: create links in work to local
+      file:
+        src: "../local/{{item}}"
+        dest: "{{ansible_directory}}/main/{{item}}"
+        state: link
+      loop:
+        - ansible.cfg
+        - requirements.yml
+        - inventory
+        - playbooks
+        - roles
+
+    - name: generate ansible vault
+      copy:
+        dest: ~/.gitignore_global
+        content: |
+          {{vault_password_generated}}
+        force: no
+        owner: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        recurse: yes
+        mode: "{{ansible_filemode}}"

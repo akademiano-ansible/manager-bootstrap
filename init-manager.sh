@@ -3,8 +3,7 @@
 #default values
 DEF_LOCAL_CONFIG_REPO=""
 DEF_AKADEMIANO_REPO="https://github.com/akademiano-ansible/ansible-app.git"
-DATE=`date +%Y-%m-%d`
-DEF_ANSIBLE_DIR="ansible-$DATE"
+DEF_ANSIBLE_DIR="\opt\ansible"
 
 ME=`basename $0`
 function print_help() {
@@ -52,8 +51,6 @@ fi
 [ -z "$AKADEMIANO_REPO" ] && { echo "Error: not defined AKADEMIANO_REPO"; exit 1; }
 [ -z "$ANSIBLE_DIR" ] && { echo "Error: not defined ANSIBLE_DIR"; exit 1; }
 
-cd ~/
-
 #check dir not exist or empty
 if [ -d "$ANSIBLE_DIR" ]; then
   if [ "$(ls -A $ANSIBLE_DIR)" ]; then
@@ -67,6 +64,7 @@ fi
 mkdir $ANSIBLE_DIR
 cd $ANSIBLE_DIR
 mkdir {app,bin,data,local,roles}
+
 
 #clone git akademiano and local
 git clone -q $AKADEMIANO_REPO app/akademiano

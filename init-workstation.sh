@@ -8,7 +8,8 @@ function print_help() {
     echo
     echo "Использование: $ME options..."
     echo "Параметры:"
-    echo "  -u          ansible manager user name"
+    echo "  -u          ansible first user"
+    echo "  -g          ansible group"
     echo "  -a          akademiano library repo url"
     echo "  -l          local repo url"
     echo "  -d          ansible dir name"
@@ -26,17 +27,22 @@ AKADEMIANO_REPO="!"
 LOCAL_CONFIG_REPO="!"
 ANSIBLE_DIR_NAME="!"
 
+ANSIBLE_MANAGER_GROUP="ansible-manager"
+
 while getopts ":u:a:l:d:h" opt ;
 do
     case $opt in
-        u)  ANSIBLE_USER=$OPTARG;
-            ;;
         a) AKADEMIANO_REPO=$OPTARG;
             ;;
         l) LOCAL_CONFIG_REPO=$OPTARG;
             ;;
         d) ANSIBLE_DIR_NAME=$OPTARG;
             ;;
+        u) ANSIBLE_DIR_NAME=$OPTARG;
+            ;;
+        g) ANSIBLE_DIR_NAME=$OPTARG;
+            ;;
+            
         h) print_help
             exit 1
             ;;
@@ -83,17 +89,18 @@ wget -O bootstrap-ansible-run.yml https://raw.githubusercontent.com/akademiano-a
 #run playbooks
 ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
+#second run after update ansible
+ansible-playbook bootstrap-ansible-run.yml -vv
 
 echo "Workstation initialized DONE"
 
-#run on user
-USER_DIR=$(sudo -u $ANSIBLE_USER -H -s eval 'echo $HOME')
 
-cd $USER_DIR;
-wget -O init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
-chmod +x init-manager.sh
-sudo -E -H -i -u $ANSIBLE_USER $USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME
 
-echo "All DONE. Exit"
+#cd $USER_DIR;
+#wget -O init-manager.sh https://raw.githubusercontent.com/akademiano-ansible/manager-bootstrap/master/init-manager.sh
+#chmod +x init-manager.sh
+#sudo -E -H -i -u $ANSIBLE_USER $USER_DIR/init-manager.sh -a $AKADEMIANO_REPO -l $LOCAL_CONFIG_REPO -d $ANSIBLE_DIR_NAME
+
+#echo "All DONE. Exit"
 
 exit 0
