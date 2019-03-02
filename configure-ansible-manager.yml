@@ -12,12 +12,19 @@
     ansible_local_repo:
     ansible_deploy_key_url:
     deploy_key_vault_password:
-    ansible_dirmode:  "g+s,u+rwX,g+rwX,o-rwx"
-    ansible_filemode:  "u+rwX,g+rwX,o-rwx"
+    ansible_dirmode: "u=rwX,g=srwX,o="
+    ansible_filemode: "u=rwX,g=rwX,o="
+
+    ansible_other_libs:
+      - repo: git@github.com:fboender/multi-git-status.git
+        name: multi-git-status
+        bin:
+          - mgitstatus
 
     vault_password_generated: "{{ lookup('password', '{{ansible_directory}}/data/.ansible_vault_secret  length=16 chars=ascii_letters,digits') }}"
     
-  tasks:  
+  tasks:
+
     - set_fact:
         ansible_lib_repo: "{{ext_ansible_lib_repo}}"
       when: ext_ansible_lib_repo is defined and ext_ansible_lib_repo | length > 0
@@ -34,6 +41,17 @@
         ansible_first_manager: "{{ext_ansible_first_manager}}"
       when: ext_ansible_first_manager is defined and ext_ansible_first_manager | length > 0
 
+    - set_fact:
+        ansible_bin_path: "{{ansible_directory}}/bin"
+        ansible_libs_dir: "{{ansible_directory}}/lib"
+        ansible_lib_path: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
+        ansible_local_path: "{{ansible_directory}}/local"
+        ansible_directory_main: "{{ansible_directory}}/main"
+        ansible_data_dir: "{{ansible_directory}}/data"
+        ansible_config_dir: "{{ansible_directory}}/conf"
+        ansible_deploy_key: "{{ansible_directory}}/data/id_deploy_key"
+      changed_when: false
+
     - name: create group
       group:
         name: "{{ansible_group}}"
@@ -47,6 +65,15 @@
 
     - name: create directory
       file:
+        path: "{{ansible_directory}}"
+        owner: "{{ansible_first_manager}}"
+        group: "{{ansible_group}}"
+        recurse: yes
+        mode: "{{ansible_dirmode}}"
+        state: directory
+
+    - name: create directorys
+      file:
         path: "{{ansible_directory}}/{{item}}"
         owner: "{{ansible_first_manager}}"
         group: "{{ansible_group}}"
@@ -54,28 +81,20 @@
         mode: "{{ansible_dirmode}}"
         state: directory
       loop:
-        - lib
         - bin
+        - lib
         - data
+        - data/cache
         - conf
         - local
         - roles
         - work
 
-    - set_fact:
-        ansible_lib_path: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
-        ansible_local_path: "{{ansible_directory}}/local"
-        ansible_directory_main: "{{ansible_directory}}/main"
-        ansible_data_dir: "{{ansible_directory}}/data"
-        ansible_config_dir: "{{ansible_directory}}/conf"
-        ansible_deploy_key: "{{ansible_directory}}/data/id_deploy_key"
-      changed_when: false
-    
     - name: deploy key | check exist
       stat:
         path: "{{ansible_deploy_key}}"
       register: deploy_key_check
-      
+
     - name: Install Deploy Key
       block:
         - name: deploy key | ask password
@@ -208,14 +227,6 @@
           register: disable_host_keys_checking
       when: (deploy_key_check is defined and deploy_key_check.stat.exists) or (deploy_key_check_second is defined and deploy_key_check_second.stat.exists)
 
-    - name: create bin directory
-      file:
-        path: "{{ansible_directory}}/bin"
-        owner: "{{ansible_first_manager}}"
-        group: "{{ansible_group}}"
-        recurse: yes
-        mode: "{{ansible_dirmode}}"
-
     - name: check lib repo installed
       find:
         paths: "{{ansible_directory}}/lib/{{ansible_lib_name}}"
@@ -228,7 +239,34 @@
         dest: "{{ansible_lib_path}}"
         accept_hostkey: yes
         key_file: "{{ansible_deploy_key}}"
+        umask: "0007"
       when: ansible_lib_repo is not none and ansible_lib_repo | length > 0 and ansible_lib_installed.matched == 0
+
+    - name: clone other lib repos
+      git:
+        repo: "{{item.repo}}"
+        dest: "{{ansible_libs_dir}}/{{item.name}}"
+        accept_hostkey: yes
+        key_file: "{{ansible_deploy_key}}"
+        umask: "0007"
+      loop: "{{ansible_other_libs}}"
+      ignore_errors: yes
+
+#    - name: fix libs access
+
+    - name: prepare bin libs
+      file:
+        path: "{{ansible_libs_dir}}/{{item.0.name}}/{{item.1}}"
+        mode: "+rx"
+        state: file
+      loop: "{{ ansible_other_libs|subelements('bin') }}"
+
+    - name: make link from bin
+      file:
+        src: "../lib/{{item.0.name}}/{{item.1}}"
+        dest: "{{ansible_bin_path}}//{{item.1}}"
+        state: link
+      loop: "{{ ansible_other_libs|subelements('bin') }}"
 
     - name: check local lib repo installed
       find:
@@ -241,6 +279,7 @@
         repo: "{{ansible_local_repo}}"
         dest: "{{ansible_local_path}}"
         accept_hostkey: yes
+        umask: "0007"
       when: ansible_local_repo is not none and ansible_local_repo | length > 0 and local_deploy_key is not none and local_deploy_key | length > 0 and ansible_local_installed.matched == 0
 
     - name: create directory | local
@@ -256,6 +295,7 @@
         - local/vars/host_vars
         - local/vars/group_vars
         - local/playbooks
+        - local/bin
 
     - name: create links in local from lib
       file:
@@ -331,6 +371,14 @@
       loop:
         - roles
 
+    - name: create links from data to work
+      file:
+        src: "../data/{{item}}"
+        dest: "{{ansible_directory}}/work/{{item}}"
+        state: link
+      loop:
+        - cache
+
     - set_fact:
         ansible_vault_path: "{{ansible_directory}}/data/.ansible_vault_secret"
       changed_when: false
@@ -355,12 +403,17 @@
       command: "chown -R {{ansible_first_manager}}:{{ansible_group}}  {{ansible_directory}}/roles"
       args:
         chdir: "{{ansible_directory}}"
+        warn: false
+      changed_when: false
 
     - name: install ansible roles | chmod
-      command: "chmod -R {{ansible_dirmode}} {{ansible_directory}}/roles"
+      shell: "chmod {{ansible_dirmode}} $(find {{ansible_directory}}/roles -type d) && chmod {{ansible_filemode}} $(find {{ansible_directory}}/roles -type f)"
       args:
         chdir: "{{ansible_directory}}"
-        
+        executable: /bin/bash
+        warn: false
+      changed_when: false
+
     - name: prepare ssh .config  | enable host keys checking
       lineinfile:
         path: "/root/.ssh/ssh_deploy_key.config"
