@@ -280,7 +280,7 @@
         dest: "{{ansible_local_path}}"
         accept_hostkey: yes
         umask: "0007"
-      when: ansible_local_repo is not none and ansible_local_repo | length > 0 and local_deploy_key is not none and local_deploy_key | length > 0 and ansible_local_installed.matched == 0
+      when: ansible_local_repo is defined and ansible_local_repo is not none and ansible_local_repo | length > 0 and ansible_local_installed.matched == 0
 
     - name: create directory | local
       file:
