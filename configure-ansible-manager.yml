@@ -305,6 +305,7 @@
       loop:
         - "ansible.cfg"
         - "requirements.yml"
+      ignore_errors: yes
 
     - name: create links in local from lib playbooks
       file:
