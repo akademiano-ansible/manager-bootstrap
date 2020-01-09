@@ -10,8 +10,6 @@
     ansible_lib_repo: "git@github.com:akademiano-ansible/ansible-app.git"
     ansible_lib_name: akademiano
     ansible_local_repo:
-    ansible_deploy_key_url:
-    deploy_key_vault_password:
     ansible_dirmode: "u=rwX,g=srwX,o="
     ansible_filemode: "u=rwX,g=rwX,o="
 
@@ -32,12 +30,6 @@
         ansible_local_repo: "{{ext_ansible_local_repo}}"
       when: ext_ansible_local_repo is defined and ext_ansible_local_repo | length > 0
     - set_fact:
-        ansible_deploy_key_url: "{{ext_ansible_deploy_key_url}}"
-      when: ext_ansible_deploy_key_url is defined and ext_ansible_deploy_key_url | length > 0
-    - set_fact:
-        deploy_key_vault_password: "{{ext_deploy_key_vault_password}}"
-      when: ext_deploy_key_vault_password is defined and ext_deploy_key_vault_password | length > 0
-    - set_fact:
         ansible_first_manager: "{{ext_ansible_first_manager}}"
       when: ext_ansible_first_manager is defined and ext_ansible_first_manager | length > 0
 
@@ -49,7 +41,6 @@
         ansible_directory_main: "{{ansible_directory}}/main"
         ansible_data_dir: "{{ansible_directory}}/data"
         ansible_config_dir: "{{ansible_directory}}/conf"
-        ansible_deploy_key: "{{ansible_directory}}/data/id_deploy_key"
       changed_when: false
 
     - name: create group
@@ -89,143 +80,6 @@
         - local
         - roles
         - work
-
-    - name: deploy key | check exist
-      stat:
-        path: "{{ansible_deploy_key}}"
-      register: deploy_key_check
-
-    - name: Install Deploy Key
-      block:
-        - name: deploy key | ask password
-          pause:
-            prompt: "Enter deploy key password"
-            echo: no
-          register: deploy_key_input_password
-          when: deploy_key_vault_password  is none or deploy_key_vault_password | length == 0
-
-        - set_fact:
-            deploy_key_vault_password: "{{deploy_key_input_password.user_input}}"
-          when: deploy_key_input_password is defined and deploy_key_input_password.user_input is defined and deploy_key_input_password.user_input | length >0
-      
-        - name: deploy key | download
-          get_url:
-            url: "{{ansible_deploy_key_url}}"
-            dest: "{{ansible_deploy_key}}.vault"
-          
-        - name: deploy key | prepare password
-          copy:
-            dest: "~/.deploy_key_vault_secret"
-            content: |
-                {{deploy_key_vault_password}}
-            force: yes
-            mode: 0600
-        
-        - name: deploy key | decrypt
-          command: "ansible-vault decrypt {{ansible_deploy_key}}.vault --output={{ansible_deploy_key}} --vault-password-file=~/.deploy_key_vault_secret"
-          args:
-            creates: "{{ansible_deploy_key}}"
-        
-        - name: deploy key | delete password
-          file:
-            path: "~/.deploy_key_vault_secret"
-            state: absent
-
-        - name: deploy key | set permissions
-          file:
-            path: "{{ansible_deploy_key}}"
-            owner: "{{ansible_first_manager}}"
-            group: "{{ansible_group}}"
-            state: file
-            mode: 0660
-
-        - name: prepare ssh .config  | prepare deploy key config
-          copy:
-            dest: "{{ansible_config_dir}}/ssh_deploy_key.config"
-            content: |
-              Host *
-                IdentityFile ~/.ssh/id_deploy_key
-            force: no
-            owner: "{{ansible_first_manager}}"
-            group: "{{ansible_group}}"
-            mode: 0660
-
-        - name: prepare ssh .config | set permissions to config
-          file:
-            path: "{{ansible_config_dir}}/ssh_deploy_key.config"
-            owner: "{{ansible_first_manager}}"
-            group: "{{ansible_group}}"
-            state: file
-            mode: 0660
-
-        - name: deploy key | check exist second
-          stat:
-            path: "{{ansible_deploy_key}}"
-          register: deploy_key_check_second
-      when: not deploy_key_check.stat.exists and ansible_deploy_key_url is not none and ansible_deploy_key_url | length > 0
-
-    - name: Add deploy key to root
-      block:
-        - name: prepare ssh .config | root | init .ssh dir
-          file:
-            path: "/root/.ssh"
-            owner: root
-            group: root
-            recurse: yes
-            state: directory
-            mode: 0600
-
-        - name: prepare ssh .config | root | init config
-          file:
-            path: "/root/.ssh/config"
-            owner: root
-            group: root
-            state: touch
-            mode: 0600
-
-        - name: prepare ssh .config | root | copy for include
-          copy:
-            src: "{{ansible_config_dir}}/ssh_deploy_key.config"
-            dest: "/root/.ssh/ssh_deploy_key.config"
-            remote_src: yes
-
-        - name: prepare ssh .config | root | deploy config file permissions
-          file:
-            path: "/root/.ssh/ssh_deploy_key.config"
-            owner: root
-            group: root
-            state: file
-            mode: 0600
-
-        - name: prepare ssh .config | root | copy identity key
-          copy:
-            src: "{{ansible_deploy_key}}"
-            dest: "/root/.ssh/id_deploy_key"
-            remote_src: yes
-
-        - name: prepare ssh .config | root | identity key file permissions
-          file:
-            path: "/root/.ssh/id_deploy_key"
-            owner: root
-            group: root
-            state: file
-            mode: 0600
-
-        - name: prepare ssh .config | root | add include for deploy key
-          blockinfile:
-            path: "/root/.ssh/config"
-            block: |
-              Include ~/.ssh/ssh_deploy_key.config
-          register: exist_root_ssh_deploy_key
-        
-        - name: prepare ssh .config  | disable host keys checking
-          lineinfile:
-            path: "/root/.ssh/ssh_deploy_key.config"
-            insertafter: "^Host /*$"
-            line: "StrictHostKeyChecking no"
-          changed_when: false
-          register: disable_host_keys_checking
-      when: (deploy_key_check is defined and deploy_key_check.stat.exists) or (deploy_key_check_second is defined and deploy_key_check_second.stat.exists)
 
     - name: check lib repo installed
       find:
@@ -414,20 +268,3 @@
         executable: /bin/bash
         warn: false
       changed_when: false
-
-    - name: prepare ssh .config  | enable host keys checking
-      lineinfile:
-        path: "/root/.ssh/ssh_deploy_key.config"
-        insertafter: "^Host /*$"
-        line: "StrictHostKeyChecking no"
-        state: absent
-      when: disable_host_keys_checking is defined
-      changed_when: false
-
-    - name: prepare ssh .config | root | rm include for deploy key
-      blockinfile:
-        path: "/root/.ssh/config"
-        block: |
-          Include ssh_deploy_key.config
-        state: absent
-      when: exist_root_ssh_deploy_key is defined

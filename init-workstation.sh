@@ -11,8 +11,7 @@ function print_help() {
     echo "  -u          ansible first user"
     echo "  -a          akademiano repo lib url"
     echo "  -l          local repo lib url"
-    echo "  -k          deploy key url"
-    echo "  -p          deploy key password"
+    echo "  -h          print help"
     echo
 }
 
@@ -20,10 +19,8 @@ function print_help() {
 AKADEMIANO_REPO=""
 LOCAL_CONFIG_REPO=""
 FIRST_USER=""
-DEPLOY_KEY_URL=""
-DEPLOY_KEY_PASSWORD=""
 
-while getopts ":a:l:u:k:p:h" opt ;
+while getopts ":a:l:u:h" opt ;
 do
     case $opt in
         a) AKADEMIANO_REPO=$OPTARG;
@@ -31,10 +28,6 @@ do
         l) LOCAL_CONFIG_REPO=$OPTARG;
             ;;
         u) FIRST_USER=$OPTARG;
-            ;;
-        k) DEPLOY_KEY_URL=$OPTARG;
-            ;;
-        p) DEPLOY_KEY_PASSWORD=$OPTARG;
             ;;
         h) print_help
             exit 1
@@ -68,7 +61,7 @@ apt-get \
 dist-upgrade
 
 #install default ansible version and wget
-apt-get install ansible wget ca-certificates git jq -y
+apt-get install ansible curl wget ca-certificates git jq  mc nano -y
 
 #update certificates for wget
 update-ca-certificates
@@ -82,7 +75,7 @@ wget -O configure-ansible-manager.yml https://raw.githubusercontent.com/akademia
 ansible-playbook bootstrap-ansible-prepare.yml -vv
 ansible-playbook bootstrap-ansible-run.yml -vv
 
-EXTVARS=$(printf '{"ext_ansible_lib_repo":"%s","ext_ansible_local_repo":"%s","ext_ansible_deploy_key_url":"%s", "ext_deploy_key_vault_password":"%s", "ext_ansible_first_manager":"%s"}\n' "$AKADEMIANO_REPO" "$LOCAL_CONFIG_REPO" "$DEPLOY_KEY_URL" "$DEPLOY_KEY_PASSWORD" "$FIRST_USER" | jq -c .)
+EXTVARS=$(printf '{"ext_ansible_lib_repo":"%s","ext_ansible_local_repo":"%s","ext_ansible_first_manager":"%s"}\n' "$AKADEMIANO_REPO" "$LOCAL_CONFIG_REPO" "$FIRST_USER" | jq -c .)
 
 ansible-playbook configure-ansible-manager.yml -vv  --extra-vars $EXTVARS
 
