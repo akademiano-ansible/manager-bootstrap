@@ -92,7 +92,6 @@
         repo: "{{ansible_lib_repo}}"
         dest: "{{ansible_lib_path}}"
         accept_hostkey: yes
-        key_file: "{{ansible_deploy_key}}"
         umask: "0007"
       when: ansible_lib_repo is not none and ansible_lib_repo | length > 0 and ansible_lib_installed.matched == 0
 
@@ -101,7 +100,6 @@
         repo: "{{item.repo}}"
         dest: "{{ansible_libs_dir}}/{{item.name}}"
         accept_hostkey: yes
-        key_file: "{{ansible_deploy_key}}"
         umask: "0007"
       loop: "{{ansible_other_libs}}"
       ignore_errors: yes
